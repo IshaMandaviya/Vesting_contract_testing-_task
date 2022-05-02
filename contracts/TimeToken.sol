@@ -12,7 +12,7 @@ contract TimeToken is ERC20, Ownable {
     address public burnToken;
     constructor () ERC20 ("TimeToken","TC")
     {
-        _mint (msg.sender, 100000000 );
+        _mint (msg.sender, 100000000*10**18 );
     }
 
     function burn(uint _amount)  public {

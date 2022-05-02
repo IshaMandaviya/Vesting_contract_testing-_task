@@ -3,6 +3,7 @@ pragma solidity ^0.8.13;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+import "hardhat/console.sol";
 
 /// @title A Vesting contract
 /// @notice You can use this contract for multiple roles as specified
@@ -185,37 +186,6 @@ contract Vesting is Ownable {
         beneficiary.isRevoked = true;
     }
 
-    /// @notice This function release the vested tokens for a beneficiary , stores it in "tokenWithdrawable" so that beneficiary can withdraw tokens.
-    /// @dev Admin can call this function
-    /// @param _beneficiary Address of the _beneficiary
-    /// @param _role Role of the _beneficiary
-    function release(address _beneficiary, allRoles _role) external onlyOwner {
-        
-        bytes32 id = keccak256(abi.encodePacked(_beneficiary, _role));
-
-        /// @dev  beneficiary should  exists
-        require(!validateBeneficiary(id), "Beneficiary is not exist in the role");
-
-        Beneficiary storage beneficiary = beneficiaries[id];
-        require(!beneficiary.isRevoked, "beneficiary is revoked");
-
-        /// @dev all vested tokens for this _beneficiary Till Now
-        uint256 totalVestedTokens = vestedTokenForRole(id);
-
-        /// @dev Subtract the totalVestedTokens from tokenReceivedTillNow ,we will get amount that is going to release Now 
-        uint256 releaseTokens = totalVestedTokens - beneficiary.tokenReceivedTillNow;
-
-        require(releaseTokens > 0, "No Tokens released yet,try after some time");
-        /// @dev update the amount of user Received till now
-        beneficiary.tokenReceivedTillNow += releaseTokens;
-        /// @dev Update the tokenWithdrawable for this _beneficiary
-        tokenWithdrawable[id] += releaseTokens;
-
-    
-
-        emit TokenReleased(_beneficiary, releaseTokens, tokenWithdrawable[id]);
-    }
-
     /// @notice Admin or a beneficiary can call this func to withdraw tokens 
     /// @dev Admin should release Tokens for the beneficiary ,after that a beneficiary will get his tokens
     /// @param  _beneficiary Address of the beneficiary
@@ -251,7 +221,37 @@ contract Vesting is Ownable {
         emit TokenWithdraw(_beneficiary, _withdrawAmount, tokenWithdrawable[id]);
     }
 
+    /// @notice This function release the vested tokens for a beneficiary , stores it in "tokenWithdrawable" so that beneficiary can withdraw tokens.
+    /// @dev Admin can call this function
+    /// @param _beneficiary Address of the _beneficiary
+    /// @param _role Role of the _beneficiary
+    function release(address _beneficiary, allRoles _role) external onlyOwner {
+        
+        bytes32 id = keccak256(abi.encodePacked(_beneficiary, _role));
+
+        /// @dev  beneficiary should  exists
+        require(!validateBeneficiary(id), "Beneficiary is not exist in the role");
+
+        Beneficiary storage beneficiary = beneficiaries[id];
+        require(!beneficiary.isRevoked, "beneficiary is revoked");
+
+        /// @dev all vested tokens for this _beneficiary Till Now
+        uint256 totalVestedTokens = vestedTokenForRole(id);
+
+        /// @dev Subtract the totalVestedTokens from tokenReceivedTillNow ,we will get amount that is going to release Now 
+        uint256 releaseTokens = totalVestedTokens - beneficiary.tokenReceivedTillNow;
+
+        require(releaseTokens > 0, "No Tokens released yet,try after some time");
+        /// @dev update the amount of user Received till now
+        beneficiary.tokenReceivedTillNow += releaseTokens;
+
+        /// @dev Update the tokenWithdrawable for this _beneficiary
+        tokenWithdrawable[id] += releaseTokens;
+
     
+
+        emit TokenReleased(_beneficiary, releaseTokens, tokenWithdrawable[id]);
+    }
 
     /// @dev Calculates the Token amount vested till Now for a specific _beneficiary
     /// @dev this is Internal function
@@ -279,10 +279,11 @@ contract Vesting is Ownable {
 
             ///@dev round of How many Interval passed
             uint256 vestedInterval = (block.timestamp - cliff) / beneficiary.interval;
-            /// @dev calculate the vested time
+            /// @dev calculate the vested time 
+            // console.log(vestedInterval);
             uint256 vestedTime = vestedInterval * beneficiary.interval;
             ///@dev return the vested token amount
-            return (totalTokenAmount * vestedTime) / duration;
+            return (totalTokenAmount * vestedTime) / (duration-beneficiary.cliff);
         }
     }
 
